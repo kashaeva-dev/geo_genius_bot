@@ -18,7 +18,7 @@ env: Env = Env()
 env.read_env()
 
 storage: MemoryStorage = MemoryStorage()
-bot: Bot = Bot(token=env('TG_TOKEN'), parse_mode='HTML')
+bot: Bot = Bot(token=env('TG_TOKEN'))
 dp: Dispatcher = Dispatcher(storage=storage)
 
 dp.include_router(user_handlers.router)
