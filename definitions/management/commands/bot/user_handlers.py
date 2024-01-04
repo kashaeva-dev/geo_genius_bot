@@ -1,5 +1,7 @@
 import logging
+import random
 
+import emoji
 from aiogram import Bot, Router, F
 from aiogram.fsm.context import FSMContext
 from asgiref.sync import sync_to_async
@@ -11,8 +13,11 @@ from aiogram.fsm.state import StatesGroup, State
 from definitions.management.commands.bot.user_keyboards import (
     user_register_keyboard,
     user_main_keyboard,
+    get_initial_definitions_keyboard,
+    get_used_definitions_keyboard,
+    get_used_in_definitions_keyboard, get_answer_choice_definitions_keyboard,
 )
-from definitions.models import Client
+from definitions.models import Client, Definition
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +39,11 @@ class Registration(StatesGroup):
     waiting_for_lastname = State()
 
 
+class Learning(StatesGroup):
+    learning_definitions = State()
+    waiting_for_definition = State()
+
+
 @router.message(Command(commands=['start']))
 async def start_command_handler(message: Message, state: FSMContext):
     client, created = await sync_to_async(Client.objects.get_or_create)(
@@ -50,14 +60,17 @@ async def start_command_handler(message: Message, state: FSMContext):
                              parse_mode='HTML',
                              )
     else:
-        await message.answer('🤖 ГЛАВНОЕ МЕНЮ:',
+        await message.answer('🤖 ГЛАВНОЕ МЕНЮ:'
+                             ',m &#128230; A&#x2208; &#127956;&#x21D4;(A&#x2208;&#x1F4C8;)&#x22C0;(A&#x2208;&#x1F9F7;)&#x22C0;(A&#x2208;&#x1FA83;)&#x22C0;(A&#x21D4;{x1&#x2208;&#x1F4CF;,x2&#x2208;&#x1F4CF;,x3&#x2208;&#x1F4CF;})',
                              reply_markup=user_main_keyboard,
+                             parse_mode='HTML',
                              )
 
 
 @router.callback_query(F.data == 'user_register')
 async def user_register_handler(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.message.answer('Пожалуйста, введи свое имя',
+                                        parse_mode='HTML',
                                          )
     await state.set_state(Registration.waiting_for_firstname)
 
@@ -77,6 +90,7 @@ async def enter_lastname(message: Message, state: FSMContext):
     )
     client.firstname = data['firstname']
     client.lastname = data['lastname']
+    await client.asave()
     await message.answer(f"Спасибо за регистрацию, {client.firstname} {client.lastname}!",
                          reply_markup=user_main_keyboard,
                          parse_mode='HTML',
@@ -88,6 +102,35 @@ async def enter_lastname(message: Message, state: FSMContext):
 async def look_definitions_handler(callback_query: CallbackQuery):
     await callback_query.message.answer(
         'Список исходных определений:',
-        reply_markup=initial_definitions_keyboard,
+        reply_markup=await get_initial_definitions_keyboard(),
         parse_mode='HTML',
         )
+
+@router.callback_query(F.data.startswith('definition_'))
+async def definition_handler(callback_query: CallbackQuery):
+    definition_id = callback_query.data.split('_')[-1]
+    definition = await sync_to_async(Definition.objects.get)(pk=definition_id)
+    await callback_query.message.answer(
+        emoji.emojize(f'<b>{definition.name.upper()}</b>\n\n{definition.description}\n\n'
+        f'определение использует :right_arrow_curving_down:'),
+        reply_markup=await get_used_definitions_keyboard(definition_id),
+        parse_mode='HTML',
+        )
+    await bot.send_message(
+        chat_id=callback_query.from_user.id,
+        text=emoji.emojize(f'определение используется :right_arrow_curving_down:'),
+        reply_markup=await get_used_in_definitions_keyboard(definition_id),
+        parse_mode='HTML',
+    )
+
+@router.callback_query(F.data == 'learn_definitions')
+async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMContext):
+    definitions_to_learn = await Definition.objects.afirst()
+    definition = definitions_to_learn
+    await state.update_data(definition=definition)
+    await callback_query.message.answer(
+        'Выбери определение, которое означает:\n\n'
+        f'{definition.description}',
+        reply_markup=await get_answer_choice_definitions_keyboard(definition.id),
+        parse_mode='HTML',
+    )

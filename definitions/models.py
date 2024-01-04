@@ -11,7 +11,7 @@ class Client(models.Model):
         verbose_name_plural = 'Клиенты'
         
     def __str__(self):
-        return f'{self.firstname} {self.lastname}'
+        return f'{self.firstname} {self.lastname} {self.chat_id}'
     
 class Definition(models.Model):
     name = models.CharField(max_length=100, verbose_name='Определение')
@@ -27,6 +27,7 @@ class Definition(models.Model):
     )
     is_initial = models.BooleanField(verbose_name='Исх.', default=False)
     emoji = models.CharField(max_length=40, verbose_name='Эмоджи', blank=True)
+    symbol = models.CharField(max_length=40, verbose_name='Символ', blank=True)
 
     def used_definitions_list(self):
         usage_records = DefinitionUsage.objects.filter(definition=self)
@@ -68,3 +69,33 @@ class DefinitionUsage(models.Model):
 
     def __str__(self):
         return f'{self.definition} -> {self.used_definition}'
+
+
+class LearnedDefinition(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент', related_name='learned_definitions')
+    definition = models.ForeignKey(Definition, on_delete=models.PROTECT, verbose_name='Определение')
+    is_learned = models.BooleanField(verbose_name='Выучено', default=False)
+    created_at = models.DateTimeField(verbose_name='Дата создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Выученные определения'
+        verbose_name_plural = 'Выученные определения'
+
+    def __str__(self):
+        return f'{self.client} -> {self.definition}'
+
+
+class DefinitionLearningProcess(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент', related_name='learning_process')
+    definition = models.ForeignKey(Definition, on_delete=models.PROTECT, verbose_name='Определение')
+    date = models.DateTimeField(verbose_name='Дата', auto_now_add=True)
+    show_counter = models.IntegerField(verbose_name='Показов', default=0)
+    choose_right_answer_counter = models.IntegerField(verbose_name='Правильно выбрано', default=0)
+    write_right_answer_counter = models.IntegerField(verbose_name='Правильно написано', default=0)
+
+    class Meta:
+        verbose_name = 'Изучаемые определения'
+        verbose_name_plural = 'Изучаемые определения'
+
+    def __str__(self):
+        return f'{self.client} -> {self.definition} - {self.date}: {self.show_counter}/{self.choose_right_answer_counter}/{self.write_right_answer_counter}'
