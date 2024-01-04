@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from definitions.models import Definition, Client, DefinitionUsage
+from definitions.models import Definition, Client, DefinitionUsage, LearnedDefinition, DefinitionLearningProcess
 
 
 class DefinitionInline(admin.TabularInline):
@@ -18,3 +18,6 @@ class DefinitionAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Client)
+admin.site.register(DefinitionUsage)
+admin.site.register(LearnedDefinition)
+admin.site.register(DefinitionLearningProcess)
