@@ -82,3 +82,12 @@ async def enter_lastname(message: Message, state: FSMContext):
                          parse_mode='HTML',
                          )
     await state.clear()
+
+
+@router.callback_query(F.data == 'look_definitions')
+async def look_definitions_handler(callback_query: CallbackQuery):
+    await callback_query.message.answer(
+        'Список исходных определений:',
+        reply_markup=initial_definitions_keyboard,
+        parse_mode='HTML',
+        )

@@ -1,12 +1,20 @@
 from django.contrib import admin
 
-from definitions.models import Definition, Client
+from definitions.models import Definition, Client, DefinitionUsage
+
+
+class DefinitionInline(admin.TabularInline):
+    model = DefinitionUsage
+    fk_name = 'definition'
+    extra = 0
 
 
 @admin.register(Definition)
 class DefinitionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'description', 'description_math', 'created_at', 'is_initial')
+    list_display = ('id', 'name', 'description', 'is_initial', 'emoji', 'used_definitions_list')
     list_display_links = ('id', 'name')
-    search_fields = ('definition',)
+    search_fields = ('name',)
+    inlines = (DefinitionInline,)
+
 
 admin.site.register(Client)
