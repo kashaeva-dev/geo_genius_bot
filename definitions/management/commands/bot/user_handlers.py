@@ -62,7 +62,7 @@ async def start_command_handler(message: Message, state: FSMContext):
                              parse_mode='HTML',
                              )
     else:
-        await message.answer('🤖 ГЛАВНОЕ МЕНЮ: <b>линия</b>&#x2192;&#x2200;$1$&#x2081;,$1$&#x2082;&#x2208;$2$:&#x2200;$1$&#x2083;&#x2208;$7$=[$1$&#x2081;;$1$&#x2082]&#x21D2;$1$&#x2083;&#x2208;$2$',
+        await message.answer('🤖 ГЛАВНОЕ МЕНЮ:',
                              reply_markup=user_main_keyboard,
                              parse_mode='HTML',
                              )
