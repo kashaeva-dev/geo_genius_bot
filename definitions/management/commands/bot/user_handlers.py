@@ -1,5 +1,6 @@
 import logging
 import random
+import re
 
 import emoji
 from aiogram import Bot, Router, F
@@ -10,6 +11,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram.fsm.state import StatesGroup, State
 
+from definitions.management.commands.bot.emoji import replace_with_emoji, async_re_sub
 from definitions.management.commands.bot.user_keyboards import (
     user_register_keyboard,
     user_main_keyboard,
@@ -109,15 +111,16 @@ async def look_definitions_handler(callback_query: CallbackQuery):
 async def definition_handler(callback_query: CallbackQuery):
     definition_id = callback_query.data.split('_')[-1]
     definition = await sync_to_async(Definition.objects.get)(pk=definition_id)
+    description_math = await async_re_sub(r'@(\d+)@', replace_with_emoji, definition.description_math)
     await callback_query.message.answer(
-        emoji.emojize(f'<b>{definition.name.upper()}</b>\n\n{definition.description}\n\n'
-        f'определение использует :right_arrow_curving_down:'),
+        f'<b>{definition.name.upper()}</b>\n\n{definition.description}\n\n'
+        f'{description_math}\n\nопределение использует ⤵',
         reply_markup=await get_used_definitions_keyboard(definition_id),
         parse_mode='HTML',
         )
     await bot.send_message(
         chat_id=callback_query.from_user.id,
-        text=emoji.emojize(f'определение используется :right_arrow_curving_down:'),
+        text=emoji.emojize(f'определение используется ⤵'),
         reply_markup=await get_used_in_definitions_keyboard(definition_id),
         parse_mode='HTML',
     )

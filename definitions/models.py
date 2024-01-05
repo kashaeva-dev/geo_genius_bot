@@ -27,6 +27,7 @@ class Definition(models.Model):
     )
     is_initial = models.BooleanField(verbose_name='Исх.', default=False)
     emoji = models.CharField(max_length=40, verbose_name='Эмоджи', blank=True)
+    emoji_picture = models.CharField(max_length=5, verbose_name='Эмоджи картинка', blank=True)
     symbol = models.CharField(max_length=40, verbose_name='Символ', blank=True)
 
     def used_definitions_list(self):

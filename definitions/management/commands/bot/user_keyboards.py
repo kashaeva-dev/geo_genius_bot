@@ -36,7 +36,7 @@ async def get_initial_definitions_keyboard():
     definitions = await sync_to_async(Definition.objects.filter)(is_initial=True)
     builder = InlineKeyboardBuilder()
     async for definition in definitions:
-        builder.button(text=f'{emoji.emojize(definition.emoji)} {definition.name}',
+        builder.button(text=f'\U0001F315 {definition.emoji} {definition.name}',
                                       callback_data=f'definition_{definition.id}',
                        )
         builder.adjust(2)
