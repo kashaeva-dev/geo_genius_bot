@@ -111,7 +111,7 @@ async def look_definitions_handler(callback_query: CallbackQuery):
 async def definition_handler(callback_query: CallbackQuery):
     definition_id = callback_query.data.split('_')[-1]
     definition = await sync_to_async(Definition.objects.get)(pk=definition_id)
-    description_math = await async_re_sub(r'@(\d+)@', replace_with_emoji, definition.description_math)
+    description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
     await callback_query.message.answer(
         f'<b>{definition.name.upper()}</b>\n\n{definition.description}\n\n'
         f'{description_math}\n\nопределение использует ⤵',
