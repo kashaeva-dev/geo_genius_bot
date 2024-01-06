@@ -79,10 +79,14 @@ async def get_answer_choice_definitions_keyboard(definition_id):
         buttons.append((f'{answer_choice.emoji_picture} {answer_choice.name}',
                        f'answer_choice_{answer_choice.id}',)
                        )
+    async for answer_choice in definition.similar_definitions.all():
+        buttons.append((f'{answer_choice.emoji_picture} {answer_choice.name}',
+                       f'answer_choice_{answer_choice.id}',)
+                       )
     buttons.append((f'{definition.emoji_picture} {definition.name}', f'answer_choice_{definition.id}'))
     random.shuffle(buttons)
     logger.info(f'buttons: {buttons}')
-    for button in buttons:
+    for button in set(buttons):
         builder.button(text=button[0],
                        callback_data=button[1],
                        )
