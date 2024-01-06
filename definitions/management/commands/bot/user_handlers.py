@@ -162,7 +162,7 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
 async def answer_choice_handler(callback_query: CallbackQuery, state: FSMContext):
     definition_id = callback_query.data.split('_')[-1]
     data = await state.get_data()
-    counter = data['counter']
+    counter = data.get('counter', 0)
     show_definition_ids = data.get('show_definition_ids', False)
     if not show_definition_ids:
         show_definition_ids = []

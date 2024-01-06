@@ -25,6 +25,13 @@ class Definition(models.Model):
         symmetrical=False,
         through='DefinitionUsage',
     )
+    similar_definitions = models.ManyToManyField(
+        'self',
+        verbose_name='Похожие определения',
+        blank=True,
+        symmetrical=True,
+        through='DefinitionSimilarity',
+    )
     is_initial = models.BooleanField(verbose_name='Исх.', default=False)
     emoji = models.CharField(max_length=40, verbose_name='Эмоджи', blank=True)
     emoji_picture = models.CharField(max_length=5, verbose_name='Эмоджи картинка', blank=True)
@@ -70,6 +77,26 @@ class DefinitionUsage(models.Model):
 
     def __str__(self):
         return f'{self.definition} -> {self.used_definition}'
+
+
+class DefinitionSimilarity(models.Model):
+    definition = models.ForeignKey(Definition,
+                                   on_delete=models.PROTECT,
+                                   verbose_name='Определение',
+                                   related_name='similar_definition_for',
+                                   )
+    similar_definition = models.ForeignKey(Definition,
+                                           on_delete=models.PROTECT,
+                                           verbose_name='Похожее определение',
+                                           related_name='similar_definition',
+                                           )
+
+    class Meta:
+        verbose_name = 'Похожее определение'
+        verbose_name_plural = 'Похожиe определения'
+
+    def __str__(self):
+        return f'{self.definition} -> {self.similar_definition}'
 
 
 class LearnedDefinition(models.Model):
