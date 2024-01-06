@@ -1,4 +1,6 @@
 from django.contrib import admin
+from import_export.admin import ImportExportModelAdmin
+
 
 from definitions.models import Definition, Client, DefinitionUsage, LearnedDefinition, DefinitionLearningProcess
 
@@ -10,7 +12,7 @@ class DefinitionInline(admin.TabularInline):
 
 
 @admin.register(Definition)
-class DefinitionAdmin(admin.ModelAdmin):
+class DefinitionAdmin(ImportExportModelAdmin):
     list_display = ('id', 'name', 'description', 'is_initial', 'emoji', 'used_definitions_list')
     list_display_links = ('id', 'name')
     search_fields = ('name',)
