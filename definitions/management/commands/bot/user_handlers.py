@@ -195,7 +195,8 @@ async def definition_handler(message: Message, state: FSMContext):
     right_answer = definition.description.lower().split()
     right_answer = [word.strip(',.()<b>/') for word in right_answer]
     right_word_count = 0
-
+    if user_answer[0] == 'это':
+        user_answer = user_answer[1:]
     for word in user_answer:
         if word in right_answer:
             right_word_count += 1
