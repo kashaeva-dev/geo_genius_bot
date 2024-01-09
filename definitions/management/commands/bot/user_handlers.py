@@ -21,7 +21,7 @@ from definitions.management.commands.bot.user_keyboards import (
     get_initial_definitions_keyboard,
     get_used_definitions_keyboard,
     get_used_in_definitions_keyboard, get_answer_choice_definitions_keyboard, learn_next_definition_keyboard,
-    to_main_menu_keyboard, user_settings_keyboard,
+    to_main_menu_keyboard, user_settings_keyboard, user_hint_keyboard,
 )
 from definitions.models import Client, Definition, DefinitionLearningProcess, LearnedDefinition
 
@@ -141,6 +141,7 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
         client = await Client.objects.aget(chat_id=callback_query.from_user.id)
         await state.update_data(client=client)
     data = await state.get_data()
+    await state.update_data(penalty=1)
     if data['counter'] < 3:
         definitions_to_learn = await sync_to_async(Definition.objects.exclude)(learning__is_learned=True)
         definitions_to_learn_ids = []
@@ -148,10 +149,12 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
             definitions_to_learn_ids.append(definition.id)
         definition_id = random.choice(definitions_to_learn_ids)
         definition = await Definition.objects.aget(pk=definition_id)
+        description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
         await state.update_data(definition=definition)
         await callback_query.message.edit_text(
             'Выбери определение, которое означает:\n\n'
-            f'{definition.description}',
+            f'{definition.description}\n\n'
+            f'{description_math}',
             reply_markup=await get_answer_choice_definitions_keyboard(definition.id),
             parse_mode='HTML',
         )
@@ -163,6 +166,7 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
         await callback_query.message.edit_text(
             'А теперь, пожалуйста, напишите определение, которое означает:\n\n'
             f'{definition.name.upper()}',
+            reply_markup=user_hint_keyboard,
             parse_mode='HTML',
         )
 
@@ -311,13 +315,13 @@ async def look_statistics_handler(callback_query: CallbackQuery):
     good_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
         client=client,
         action='typing',
-        score=0.8,
+        score=10,
         date__date=today,
     ).count)()
     bad_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
         client=client,
         action='typing',
-        score=0.5,
+        score=5,
         date__date=today,
     ).count)()
     client_with_today_score = await sync_to_async(DefinitionLearningProcess.objects.filter(
@@ -371,5 +375,17 @@ async def settings_handler(callback_query: CallbackQuery):
     await callback_query.message.edit_text(
         '⚙ НАСТРОЙКИ:',
         reply_markup=user_settings_keyboard,
+        parse_mode='HTML',
+    )
+
+
+@router.callback_query(F.data == 'look_definition_math')
+async def look_definition_math_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    definition = data['definition']
+    description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
+    await callback_query.message.answer(
+        text=f'Надеюсь, что тебе это поможет 😉\n\n'
+        f'{description_math}',
         parse_mode='HTML',
     )
