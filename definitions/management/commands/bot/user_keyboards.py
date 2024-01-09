@@ -49,9 +49,18 @@ user_settings_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         InlineKeyboardButton(text=emoji.emojize(':pencil: Изменить имя'), callback_data='change_name')
     ],
 ]
-
 )
 
+user_hint_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text=emoji.emojize(':bomb: Мат. определение'), callback_data='look_definition_math'),
+    ],
+    [
+        InlineKeyboardButton(text=emoji.emojize(':key: Подсказка'), callback_data='look_definition_hint'),
+    ],
+]
+
+)
 
 async def get_initial_definitions_keyboard():
     definitions = await sync_to_async(Definition.objects.filter)(is_initial=True)
