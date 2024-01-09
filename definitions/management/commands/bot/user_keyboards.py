@@ -23,12 +23,21 @@ user_register_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     ],
 ])
 
+to_main_menu_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text='На главную', callback_data='to_main_menu'),
+    ],
+])
+
 user_main_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text=emoji.emojize(':eyes: Просмотреть'), callback_data='look_definitions'),
+        InlineKeyboardButton(text=emoji.emojize(':eyes: Просмотреть определения'), callback_data='look_definitions'),
     ],
     [
-        InlineKeyboardButton(text=emoji.emojize(':brain: Учить'), callback_data='learn_definitions'),
+        InlineKeyboardButton(text=emoji.emojize(':brain: Учить определения'), callback_data='learn_definitions'),
+    ],
+    [
+        InlineKeyboardButton(text=emoji.emojize(':1st_place_medal: Посмотреть рейтинг'), callback_data='look_statistics'),
     ],
 ])
 

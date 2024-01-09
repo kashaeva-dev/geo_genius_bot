@@ -114,16 +114,19 @@ class LearnedDefinition(models.Model):
 
 
 class DefinitionLearningProcess(models.Model):
+    ACTIONS = (
+        ('selection', 'выбор'),
+        ('typing', 'ввод'),
+    )
     client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент', related_name='learning_process')
     definition = models.ForeignKey(Definition, on_delete=models.PROTECT, verbose_name='Определение')
     date = models.DateTimeField(verbose_name='Дата', auto_now_add=True)
-    show_counter = models.IntegerField(verbose_name='Показов', default=0)
-    choose_right_answer_counter = models.IntegerField(verbose_name='Правильно выбрано', default=0)
-    write_right_answer_counter = models.IntegerField(verbose_name='Правильно написано', default=0)
+    action = models.CharField(max_length=20, verbose_name='Действие', choices=ACTIONS)
+    score = models.FloatField(verbose_name='Баллы', default=0)
 
     class Meta:
         verbose_name = 'Изучаемые определения'
         verbose_name_plural = 'Изучаемые определения'
 
     def __str__(self):
-        return f'{self.client} -> {self.definition} - {self.date}: {self.show_counter}/{self.choose_right_answer_counter}/{self.write_right_answer_counter}'
+        return f'{self.client} -> {self.definition} - {self.date}'

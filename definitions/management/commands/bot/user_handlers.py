@@ -1,11 +1,14 @@
 import logging
 import random
 import re
+from datetime import date
 
 import emoji
 from aiogram import Bot, Router, F
 from aiogram.fsm.context import FSMContext
 from asgiref.sync import sync_to_async
+from django.db.models import Sum, FloatField
+from django.db.models.functions import Coalesce
 from environs import Env
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
@@ -18,8 +21,9 @@ from definitions.management.commands.bot.user_keyboards import (
     get_initial_definitions_keyboard,
     get_used_definitions_keyboard,
     get_used_in_definitions_keyboard, get_answer_choice_definitions_keyboard, learn_next_definition_keyboard,
+    to_main_menu_keyboard,
 )
-from definitions.models import Client, Definition
+from definitions.models import Client, Definition, DefinitionLearningProcess, LearnedDefinition
 
 logging.basicConfig(
     level=logging.INFO,
@@ -130,6 +134,9 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
     data = await state.get_data()
     if not data.get('counter', False):
         await state.update_data(counter=0)
+    if not data.get('client', False):
+        client = await Client.objects.aget(chat_id=callback_query.from_user.id)
+        await state.update_data(client=client)
     data = await state.get_data()
     if data['counter'] < 3:
         definitions_to_learn = await sync_to_async(Definition.objects.all)()
@@ -171,12 +178,26 @@ async def answer_choice_handler(callback_query: CallbackQuery, state: FSMContext
     await state.update_data(show_definition_ids=show_definition_ids)
     definition = await Definition.objects.aget(pk=definition_id)
     if definition.id == data['definition'].id:
+        client = data['client']
+        await DefinitionLearningProcess.objects.acreate(
+            client=client,
+            definition=definition,
+            action='selection',
+            score=1,
+        )
         await callback_query.message.edit_text(
             'Правильно!',
             reply_markup=learn_next_definition_keyboard,
             parse_mode='HTML',
         )
     else:
+        client = data['client']
+        await DefinitionLearningProcess.objects.acreate(
+            client=client,
+            definition=definition,
+            action='selection',
+            score=0,
+        )
         await callback_query.message.edit_text(
             f'Неправильно. Правильный ответ: <b>{data["definition"].name}</b>',
             reply_markup=learn_next_definition_keyboard,
@@ -193,8 +214,9 @@ async def definition_handler(message: Message, state: FSMContext):
     user_answer = message.text.lower().split()
     user_answer = [word.strip(',.()') for word in user_answer]
     right_answer = definition.description.lower().split()
-    right_answer = [word.strip(',.()<b>/') for word in right_answer]
+    right_answer = [word.strip(',.-()<b>/') for word in right_answer]
     right_word_count = 0
+    client = data['client']
     if user_answer[0] == 'это':
         user_answer = user_answer[1:]
     for word in user_answer:
@@ -203,12 +225,43 @@ async def definition_handler(message: Message, state: FSMContext):
     mark = right_word_count / len(right_answer)
 
     if mark == 1:
+        await DefinitionLearningProcess.objects.acreate(
+            client=client,
+            definition=definition,
+            action='typing',
+            score=30,
+        )
+        scores = await sync_to_async(DefinitionLearningProcess.objects.filter(client=client, definition=definition).values_list)('score', flat=True)
+        if sum(scores) >= 100:
+            await LearnedDefinition.objects.acreate(
+                client=client,
+                definition=definition,
+                is_learned=True,
+            )
         mark_text = '🏆 Отлично! Точно в цель!'
     elif mark >= 0.8:
+        await DefinitionLearningProcess.objects.acreate(
+            client=client,
+            definition=definition,
+            action='typing',
+            score=10,
+        )
         mark_text = '👍 Почти получилось! Надо чуть-чуть подкорректировать!'
     elif mark >= 0.5:
+        await DefinitionLearningProcess.objects.acreate(
+            client=client,
+            definition=definition,
+            action='typing',
+            score=5,
+        )
         mark_text = '🥉 Неплохо! Пожалуйста, обрати внимание на формулировку!'
     else:
+        await DefinitionLearningProcess.objects.acreate(
+            client=client,
+            definition=definition,
+            action='typing',
+            score=0,
+        )
         mark_text = '☹  Попробуй еще раз! Все получится!'
     if mark == 1:
         await message.answer(
@@ -223,3 +276,83 @@ async def definition_handler(message: Message, state: FSMContext):
             parse_mode='HTML',
         )
     await state.clear()
+
+
+@router.callback_query(F.data == 'look_statistics')
+async def look_statistics_handler(callback_query: CallbackQuery):
+    today = date.today()
+    client = await Client.objects.aget(chat_id=callback_query.from_user.id)
+    learned_definitions = await sync_to_async(LearnedDefinition.objects.filter(client=client).distinct().count)()
+    all_definitions = await sync_to_async(Definition.objects.all().count)()
+    learned_today_definitions = await sync_to_async(LearnedDefinition.objects.filter(
+        client=client,
+        created_at__date=date.today()
+    ).distinct().count)()
+    correct_selections = await sync_to_async(DefinitionLearningProcess.objects.filter(
+        client=client,
+        action='selection',
+        score__gt=0,
+        date__date=today,
+    ).count)()
+    excellent_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
+        client=client,
+        action='typing',
+        score=4,
+        date__date=today,
+    ).count)()
+    good_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
+        client=client,
+        action='typing',
+        score=0.8,
+        date__date=today,
+    ).count)()
+    bad_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
+        client=client,
+        action='typing',
+        score=0.5,
+        date__date=today,
+    ).count)()
+    client_with_today_score = await sync_to_async(DefinitionLearningProcess.objects.filter(
+        client=client,
+        date__date=today,
+    ).aggregate)(total_score=Sum('score'))
+    today_total_score = client_with_today_score['total_score']
+    scores = await sync_to_async(DefinitionLearningProcess.objects.select_related('client').filter(
+        date__date=today,
+    ).values(
+        'client'
+    ).annotate(
+        total_score=Coalesce(Sum('score'), 0, output_field=FloatField())
+    ).order_by)('total_score')
+
+    scores_text = 'РЕЙТИНГ 3 ЛУЧШИХ УЧАСТНИКОВ:\n'
+    counter = 0
+    async for score in scores[:3]:
+        logger.info(f'score: {score["client"]}')
+        client = await Client.objects.aget(id=score["client"])
+        scores_text += f'🥇 {client.firstname} {client.lastname} - {score["total_score"]}\n'
+    scores_text += '\n'
+    today_total_score_text = ''
+    if today_total_score:
+        today_total_score_text = f'Твой рейтинг сегодня: <b>{today_total_score}</b>'
+    await callback_query.message.answer(
+        'СТАТИСТИКА:\n\n'
+        f'Всего выучено определений и/или аксиом: <b>{learned_definitions}</b> из {all_definitions}\n\n'
+        'ЗА СЕГОДНЯ:\n'
+        f'Выучено определений: <b>{learned_today_definitions}</b>\n'
+        f'Выбрано правильных ответов: <b>{correct_selections}</b>\n'
+        f'Написано определений: 🏆 <b>{excellent_typings}</b> 👍 <b>{good_typings}</b> 🥉 <b>{bad_typings}</b>\n\n'
+        f'{scores_text}'
+        f'{today_total_score_text}',
+        reply_markup=to_main_menu_keyboard,
+        parse_mode='HTML',
+    )
+
+
+@router.callback_query(F.data == 'to_main_menu')
+async def to_main_menu_handler(callback_query: CallbackQuery):
+    await callback_query.message.edit_text(
+        'ГЛАВНОЕ МЕНЮ:',
+        reply_markup=user_main_keyboard,
+        parse_mode='HTML',
+    )
