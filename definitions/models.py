@@ -17,6 +17,7 @@ class Definition(models.Model):
     name = models.CharField(max_length=100, verbose_name='Определение')
     description = models.TextField(verbose_name='Формулировка')
     description_math = models.TextField(verbose_name='Формулировка математическая', blank=True)
+    proof = models.TextField(verbose_name='Доказательство', blank=True, default='')
     created_at = models.DateTimeField(verbose_name='Дата создания', auto_now_add=True)
     used_definitions = models.ManyToManyField(
         'self',
