@@ -4,6 +4,7 @@ class Client(models.Model):
     chat_id = models.CharField(max_length=20, verbose_name='Чат ID')
     firstname = models.CharField(max_length=100, verbose_name='Имя')
     lastname = models.CharField(max_length=100, verbose_name='Фамилия')
+    description_math_is_on=models.BooleanField(verbose_name='Исп. мат. определение', default=True)
     
     
     class Meta:
