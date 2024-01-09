@@ -48,18 +48,29 @@ user_settings_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(text=emoji.emojize(':pencil: Изменить имя'), callback_data='change_name')
     ],
+    [
+        InlineKeyboardButton(text=emoji.emojize(':pencil: Вкл./Выкл. мат. определение'), callback_data='change_description_math_usage')
+    ],
 ]
 )
 
 user_hint_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(text=emoji.emojize(':bomb: Мат. определение'), callback_data='look_definition_math'),
-    ],
-    [
         InlineKeyboardButton(text=emoji.emojize(':key: Подсказка'), callback_data='look_definition_hint'),
     ],
 ]
 
+)
+
+user_description_math_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text=emoji.emojize(':pencil: Включить'), callback_data='change_name')
+    ],
+    [
+        InlineKeyboardButton(text=emoji.emojize(':pencil: Выключить'), callback_data='change_description_math_usage')
+    ],
+]
 )
 
 async def get_initial_definitions_keyboard():

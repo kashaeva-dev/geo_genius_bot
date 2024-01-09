@@ -121,7 +121,7 @@ async def definition_handler(callback_query: CallbackQuery):
     description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
     await callback_query.message.answer(
         f'<b>{definition.name.upper()}</b>\n\n{definition.description}\n\n'
-        f'{description_math}\n\nопределение использует ⤵',
+        f'определение использует ⤵',
         reply_markup=await get_used_definitions_keyboard(definition_id),
         parse_mode='HTML',
         )
@@ -387,5 +387,13 @@ async def look_definition_math_handler(callback_query: CallbackQuery, state: FSM
     await callback_query.message.answer(
         text=f'Надеюсь, что тебе это поможет 😉\n\n'
         f'{description_math}',
+        parse_mode='HTML',
+    )
+
+@router.callback_query(F.data == 'change_description_math_usage')
+async def change_description_math_usage_handler(callback_query: CallbackQuery):
+    await callback_query.message.edit_text(
+        text='Здесь можно включить или выключить отображение математических определений в процессе изучения',
+        reply_markup=user_description_math_keyboard,
         parse_mode='HTML',
     )
