@@ -21,7 +21,7 @@ from definitions.management.commands.bot.user_keyboards import (
     get_initial_definitions_keyboard,
     get_used_definitions_keyboard,
     get_used_in_definitions_keyboard, get_answer_choice_definitions_keyboard, learn_next_definition_keyboard,
-    to_main_menu_keyboard,
+    to_main_menu_keyboard, user_settings_keyboard,
 )
 from definitions.models import Client, Definition, DefinitionLearningProcess, LearnedDefinition
 
@@ -71,9 +71,12 @@ async def start_command_handler(message: Message, state: FSMContext):
                              parse_mode='HTML',
                              )
 
-
+@router.callback_query(F.data == 'change_name')
 @router.callback_query(F.data == 'user_register')
 async def user_register_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    client = data.get('client', await Client.objects.aget(chat_id=callback_query.from_user.id))
+    await state.update_data(client=client)
     await callback_query.message.answer('Пожалуйста, введи свое имя',
                                         parse_mode='HTML',
                                          )
@@ -96,7 +99,7 @@ async def enter_lastname(message: Message, state: FSMContext):
     client.firstname = data['firstname']
     client.lastname = data['lastname']
     await client.asave()
-    await message.answer(f"Спасибо за регистрацию, {client.firstname} {client.lastname}!",
+    await message.answer(f"Добро пожаловать, {client.firstname} {client.lastname}!",
                          reply_markup=user_main_keyboard,
                          parse_mode='HTML',
                          )
@@ -139,7 +142,7 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
         await state.update_data(client=client)
     data = await state.get_data()
     if data['counter'] < 3:
-        definitions_to_learn = await sync_to_async(Definition.objects.all)()
+        definitions_to_learn = await sync_to_async(Definition.objects.exclude)(learning__is_learned=True)
         definitions_to_learn_ids = []
         async for definition in definitions_to_learn:
             definitions_to_learn_ids.append(definition.id)
@@ -231,14 +234,19 @@ async def definition_handler(message: Message, state: FSMContext):
             action='typing',
             score=30,
         )
-        scores = await sync_to_async(DefinitionLearningProcess.objects.filter(client=client, definition=definition).values_list)('score', flat=True)
-        if sum(scores) >= 100:
-            await LearnedDefinition.objects.acreate(
+        actions = await sync_to_async(DefinitionLearningProcess.objects.filter)(client=client, definition=definition)
+        total_score = 0
+        async for action in actions:
+            total_score += action.score
+        if total_score >= 100:
+            await sync_to_async(LearnedDefinition.objects.get_or_create)(
                 client=client,
                 definition=definition,
-                is_learned=True,
+                defaults={'is_learned': True}
             )
-        mark_text = '🏆 Отлично! Точно в цель!'
+            mark_text = '🏆 Отлично! Точно в цель!\n\n 🎉 Поздравляю! Определение отмечено как выученное!'
+        else:
+            mark_text = '🏆 Отлично! Точно в цель!'
     elif mark >= 0.8:
         await DefinitionLearningProcess.objects.acreate(
             client=client,
@@ -352,7 +360,16 @@ async def look_statistics_handler(callback_query: CallbackQuery):
 @router.callback_query(F.data == 'to_main_menu')
 async def to_main_menu_handler(callback_query: CallbackQuery):
     await callback_query.message.edit_text(
-        'ГЛАВНОЕ МЕНЮ:',
+        '🤖 ГЛАВНОЕ МЕНЮ:',
         reply_markup=user_main_keyboard,
+        parse_mode='HTML',
+    )
+
+
+@router.callback_query(F.data == 'settings')
+async def settings_handler(callback_query: CallbackQuery):
+    await callback_query.message.edit_text(
+        '⚙ НАСТРОЙКИ:',
+        reply_markup=user_settings_keyboard,
         parse_mode='HTML',
     )

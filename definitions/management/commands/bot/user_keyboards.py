@@ -39,7 +39,19 @@ user_main_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(text=emoji.emojize(':1st_place_medal: Посмотреть рейтинг'), callback_data='look_statistics'),
     ],
+    [
+        InlineKeyboardButton(text=emoji.emojize(':gear: Настройки'), callback_data='settings'),
+    ],
 ])
+
+user_settings_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text=emoji.emojize(':pencil: Изменить имя'), callback_data='change_name')
+    ],
+]
+
+)
+
 
 async def get_initial_definitions_keyboard():
     definitions = await sync_to_async(Definition.objects.filter)(is_initial=True)

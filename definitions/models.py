@@ -101,8 +101,8 @@ class DefinitionSimilarity(models.Model):
 
 
 class LearnedDefinition(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент', related_name='learned_definitions')
-    definition = models.ForeignKey(Definition, on_delete=models.PROTECT, verbose_name='Определение')
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент', related_name='learning')
+    definition = models.ForeignKey(Definition, on_delete=models.PROTECT, verbose_name='Определение', related_name='learning')
     is_learned = models.BooleanField(verbose_name='Выучено', default=False)
     created_at = models.DateTimeField(verbose_name='Дата создания', auto_now_add=True)
 
