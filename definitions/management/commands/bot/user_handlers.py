@@ -121,7 +121,7 @@ async def definition_handler(callback_query: CallbackQuery):
     description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
     await callback_query.message.answer(
         f'<b>{definition.name.upper()}</b>\n\n{definition.description}\n\n'
-        f'определение использует ⤵',
+        f'{description_math}\n\nопределение использует ⤵',
         reply_markup=await get_used_definitions_keyboard(definition_id),
         parse_mode='HTML',
         )
@@ -153,8 +153,7 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
         await state.update_data(definition=definition)
         await callback_query.message.edit_text(
             'Выбери определение, которое означает:\n\n'
-            f'{definition.description}\n\n'
-            f'{description_math}',
+            f'{definition.description}\n\n',
             reply_markup=await get_answer_choice_definitions_keyboard(definition.id),
             parse_mode='HTML',
         )
