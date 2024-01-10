@@ -23,7 +23,7 @@ from definitions.management.commands.bot.user_keyboards import (
     get_used_in_definitions_keyboard, get_answer_choice_definitions_keyboard, learn_next_definition_keyboard,
     to_main_menu_keyboard, user_settings_keyboard, user_hint_keyboard, user_description_math_keyboard,
 )
-from definitions.models import Client, Definition, DefinitionLearningProcess, LearnedDefinition
+from definitions.models import Client, Definition, DefinitionLearningProcess, LearnedDefinition, Error
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,6 +48,10 @@ class Registration(StatesGroup):
 class Learning(StatesGroup):
     learning_definitions = State()
     waiting_for_definition = State()
+
+
+class ErrorReporting(StatesGroup):
+    waiting_for_report = State()
 
 
 @router.message(Command(commands=['start']))
@@ -423,3 +427,53 @@ async def description_math_handler(callback_query: CallbackQuery):
             reply_markup=user_main_keyboard,
             parse_mode='HTML',
         )
+
+@router.callback_query(F.data == 'look_definition_beginning')
+async def look_definition_beginning_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    definition = data['definition']
+    await callback_query.message.answer(
+        text=f'Начало определения: <b>{definition.description.split()[0]}</b>',
+        parse_mode='HTML',
+    )
+
+
+@router.callback_query(F.data == 'error_report')
+async def report_command_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    if data.get('definition', False):
+        definition = data['definition']
+        await callback_query.message.answer(
+            text='Пожалуйста, опишите проблему '
+            f'c определением: {definition.name.upper()}',
+            reply_markup=to_main_menu_keyboard,
+            parse_mode='HTML',
+        )
+    else:
+        await callback_query.message.answer(
+            text='Пожалуйста, опишите проблему',
+            reply_markup=to_main_menu_keyboard,
+            parse_mode='HTML',
+        )
+    await state.set_state(ErrorReporting.waiting_for_report)
+
+@router.message(ErrorReporting.waiting_for_report)
+async def report_handler(message: Message, state: FSMContext):
+    error = message.text
+    data = await state.get_data()
+    client = await Client.objects.aget(chat_id=message.from_user.id)
+    if data.get('definition', False):
+        definition = data['definition']
+        await Error.objects.acreate(client=client, definition=definition, error=error)
+        await message.answer(
+            text='Спасибо за Вашу помощь. Мы обязательно разберемся с этим!',
+            parse_mode='HTML',
+        )
+    else:
+        Error.objects.create(client=client, error=error)
+        await message.answer(
+            text='Спасибо за Вашу помощь. Мы обязательно разберемся с этим!',
+            parse_mode='HTML',
+        )
+
+    await state.clear()

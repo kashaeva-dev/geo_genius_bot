@@ -59,6 +59,7 @@ user_hint_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(text=emoji.emojize(':bomb: Мат. определение'), callback_data='look_definition_math'),
         InlineKeyboardButton(text=emoji.emojize(':key: Подсказка'), callback_data='look_definition_hint'),
+        InlineKeyboardButton(text=emoji.emojize(':one: Начало'), callback_data='look_definition_beginning'),
     ],
 ]
 
@@ -139,6 +140,9 @@ async def get_answer_choice_definitions_keyboard(definition_id):
 
 learn_next_definition_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text='Дальше', callback_data='learn_definitions'),
+        InlineKeyboardButton(text=emoji.emojize('Дальше :play_button:'), callback_data='learn_definitions'),
+    ],
+    [
+        InlineKeyboardButton(text=emoji.emojize(':warning: Ошибка'), callback_data='error_report'),
     ],
 ])

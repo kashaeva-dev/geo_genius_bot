@@ -3,7 +3,7 @@ from import_export.admin import ImportExportModelAdmin
 
 
 from definitions.models import Definition, Client, DefinitionUsage, LearnedDefinition, DefinitionLearningProcess, \
-    DefinitionSimilarity
+    DefinitionSimilarity, Error
 
 
 class DefinitionInline(admin.TabularInline):
@@ -29,3 +29,4 @@ admin.site.register(Client)
 admin.site.register(DefinitionUsage)
 admin.site.register(LearnedDefinition)
 admin.site.register(DefinitionLearningProcess)
+admin.site.register(Error)

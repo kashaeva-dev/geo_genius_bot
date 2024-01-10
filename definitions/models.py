@@ -6,7 +6,7 @@ class Client(models.Model):
     lastname = models.CharField(max_length=100, verbose_name='Фамилия')
     description_math_is_on=models.BooleanField(verbose_name='Исп. мат. определение', default=True)
     
-    
+
     class Meta:
         verbose_name = 'Клиент'
         verbose_name_plural = 'Клиенты'
@@ -120,10 +120,18 @@ class DefinitionLearningProcess(models.Model):
         ('selection', 'выбор'),
         ('typing', 'ввод'),
     )
+    GRADES = (
+        ('excellent', 'отлично'),
+        ('good', 'хорошо'),
+        ('satisfactory', 'удовлетворительно'),
+        ('bad', 'неудовлетворительно'),
+    )
+
     client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент', related_name='learning_process')
     definition = models.ForeignKey(Definition, on_delete=models.PROTECT, verbose_name='Определение')
     date = models.DateTimeField(verbose_name='Дата', auto_now_add=True)
     action = models.CharField(max_length=20, verbose_name='Действие', choices=ACTIONS)
+    grade = models.CharField(max_length=20, verbose_name='Оценка', choices=GRADES, blank=True, default='')
     score = models.FloatField(verbose_name='Баллы', default=0)
 
     class Meta:
@@ -132,3 +140,23 @@ class DefinitionLearningProcess(models.Model):
 
     def __str__(self):
         return f'{self.client} -> {self.definition} - {self.date}'
+
+
+class Error(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент', related_name='mistakes')
+    definition = models.ForeignKey(Definition,
+                                   on_delete=models.PROTECT,
+                                   verbose_name='Определение',
+                                   related_name='mistakes',
+                                   null=True
+                                   )
+    error = models.TextField(verbose_name='Ошибка')
+    created_at = models.DateTimeField(verbose_name='Дата создания', auto_now_add=True)
+    is_resolved = models.BooleanField(verbose_name='Решена', default=False)
+
+    class Meta:
+        verbose_name = 'Ошибка'
+        verbose_name_plural = 'Ошибки'
+
+    def __str__(self):
+        return f'{self.definition} -> {self.error}'
