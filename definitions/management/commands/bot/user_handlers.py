@@ -21,9 +21,9 @@ from definitions.management.commands.bot.user_keyboards import (
     get_initial_definitions_keyboard,
     get_used_definitions_keyboard,
     get_used_in_definitions_keyboard, get_answer_choice_definitions_keyboard, learn_next_definition_keyboard,
-    to_main_menu_keyboard, user_settings_keyboard, user_hint_keyboard,
+    to_main_menu_keyboard, user_settings_keyboard, user_hint_keyboard, user_description_math_keyboard,
 )
-from definitions.models import Client, Definition, DefinitionLearningProcess, LearnedDefinition
+from definitions.models import Client, Definition, DefinitionLearningProcess, LearnedDefinition, Error
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,6 +48,10 @@ class Registration(StatesGroup):
 class Learning(StatesGroup):
     learning_definitions = State()
     waiting_for_definition = State()
+
+
+class ErrorReporting(StatesGroup):
+    waiting_for_report = State()
 
 
 @router.message(Command(commands=['start']))
@@ -115,10 +119,11 @@ async def look_definitions_handler(callback_query: CallbackQuery):
         )
 
 @router.callback_query(F.data.startswith('definition_'))
-async def definition_handler(callback_query: CallbackQuery):
+async def definition_handler(callback_query: CallbackQuery, state: FSMContext):
     definition_id = callback_query.data.split('_')[-1]
     definition = await sync_to_async(Definition.objects.get)(pk=definition_id)
-    description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
+    data = await state.get_data()
+    description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math) + '\n'
     await callback_query.message.answer(
         f'<b>{definition.name.upper()}</b>\n\n{definition.description}\n\n'
         f'{description_math}\n\nопределение использует ⤵',
@@ -149,11 +154,16 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
             definitions_to_learn_ids.append(definition.id)
         definition_id = random.choice(definitions_to_learn_ids)
         definition = await Definition.objects.aget(pk=definition_id)
-        description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
+        client = data['client']
+        if client.description_math_is_on:
+            description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
+        else:
+            description_math = ''
         await state.update_data(definition=definition)
         await callback_query.message.edit_text(
             'Выбери определение, которое означает:\n\n'
-            f'{definition.description}\n\n',
+            f'{definition.description}\n\n'
+            f'{description_math}',
             reply_markup=await get_answer_choice_definitions_keyboard(definition.id),
             parse_mode='HTML',
         )
@@ -223,6 +233,7 @@ async def definition_handler(message: Message, state: FSMContext):
     right_answer = [word.strip(',.-()<b>/') for word in right_answer]
     right_word_count = 0
     client = data['client']
+    penalty = data['penalty']
     if user_answer[0] == 'это':
         user_answer = user_answer[1:]
     for word in user_answer:
@@ -235,7 +246,8 @@ async def definition_handler(message: Message, state: FSMContext):
             client=client,
             definition=definition,
             action='typing',
-            score=30,
+            grade = 'excellent',
+            score=30 / penalty,
         )
         actions = await sync_to_async(DefinitionLearningProcess.objects.filter)(client=client, definition=definition)
         total_score = 0
@@ -255,7 +267,8 @@ async def definition_handler(message: Message, state: FSMContext):
             client=client,
             definition=definition,
             action='typing',
-            score=10,
+            grade='good',
+            score=10 / penalty,
         )
         mark_text = '👍 Почти получилось! Надо чуть-чуть подкорректировать!'
     elif mark >= 0.5:
@@ -263,7 +276,8 @@ async def definition_handler(message: Message, state: FSMContext):
             client=client,
             definition=definition,
             action='typing',
-            score=5,
+            grade='satisfactory',
+            score=5 / penalty,
         )
         mark_text = '🥉 Неплохо! Пожалуйста, обрати внимание на формулировку!'
     else:
@@ -271,6 +285,7 @@ async def definition_handler(message: Message, state: FSMContext):
             client=client,
             definition=definition,
             action='typing',
+            grade='bad',
             score=0,
         )
         mark_text = '☹  Попробуй еще раз! Все получится!'
@@ -308,19 +323,19 @@ async def look_statistics_handler(callback_query: CallbackQuery):
     excellent_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
         client=client,
         action='typing',
-        score=4,
+        grade='excellent',
         date__date=today,
     ).count)()
     good_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
         client=client,
         action='typing',
-        score=10,
+        grade='good',
         date__date=today,
     ).count)()
     bad_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
         client=client,
         action='typing',
-        score=5,
+        grade='bad',
         date__date=today,
     ).count)()
     client_with_today_score = await sync_to_async(DefinitionLearningProcess.objects.filter(
@@ -390,9 +405,108 @@ async def look_definition_math_handler(callback_query: CallbackQuery, state: FSM
     )
 
 @router.callback_query(F.data == 'change_description_math_usage')
-async def change_description_math_usage_handler(callback_query: CallbackQuery):
+async def description_math_menu_handler(callback_query: CallbackQuery):
     await callback_query.message.edit_text(
         text='Здесь можно включить или выключить отображение математических определений в процессе изучения',
         reply_markup=user_description_math_keyboard,
+        parse_mode='HTML',
+    )
+
+@router.callback_query(F.data.startswith('description_math_'))
+async def description_math_handler(callback_query: CallbackQuery):
+    condition = callback_query.data.split('_')[-1]
+    client = await Client.objects.aget(chat_id=callback_query.from_user.id)
+    if condition == 'on':
+        client.description_math_is_on = True
+        await client.asave()
+        await callback_query.message.edit_text(
+            text='Математические определения включены',
+            reply_markup=user_main_keyboard,
+            parse_mode='HTML',
+        )
+    else:
+        client.description_math_is_on = False
+        await client.asave()
+        await callback_query.message.edit_text(
+            text='Математические определения выключены',
+            reply_markup=user_main_keyboard,
+            parse_mode='HTML',
+        )
+
+@router.callback_query(F.data == 'look_definition_beginning')
+async def look_definition_beginning_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    definition = data['definition']
+    await callback_query.message.answer(
+        text=f'Начало определения: <b>{definition.description.split()[0]}</b>',
+        parse_mode='HTML',
+    )
+
+
+@router.callback_query(F.data == 'error_report')
+async def report_command_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    if data.get('definition', False):
+        definition = data['definition']
+        await callback_query.message.answer(
+            text='Пожалуйста, опишите проблему '
+            f'c определением: {definition.name.upper()}',
+            reply_markup=to_main_menu_keyboard,
+            parse_mode='HTML',
+        )
+    else:
+        await callback_query.message.answer(
+            text='Пожалуйста, опишите проблему',
+            reply_markup=to_main_menu_keyboard,
+            parse_mode='HTML',
+        )
+    await state.set_state(ErrorReporting.waiting_for_report)
+
+@router.message(ErrorReporting.waiting_for_report)
+async def report_handler(message: Message, state: FSMContext):
+    error = message.text
+    data = await state.get_data()
+    client = await Client.objects.aget(chat_id=message.from_user.id)
+    if data.get('definition', False):
+        definition = data['definition']
+        await Error.objects.acreate(client=client, definition=definition, error=error)
+        await message.answer(
+            text='Спасибо за Вашу помощь. Мы обязательно разберемся с этим!',
+            parse_mode='HTML',
+        )
+    else:
+        Error.objects.create(client=client, error=error)
+        await message.answer(
+            text='Спасибо за Вашу помощь. Мы обязательно разберемся с этим!',
+            parse_mode='HTML',
+        )
+
+    await state.clear()
+
+
+@router.callback_query(F.data == 'look_definition_words')
+async def look_definition_words_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    definition = data['definition']
+    used_definitions = await sync_to_async(definition.used_definitions.all)()
+    text = 'Данное определение основано на определениях:\n'
+    async for used_definition in used_definitions:
+        text += f'{used_definition.name}\n'
+    await callback_query.message.answer(
+        text=text,
+        parse_mode='HTML',
+    )
+
+@router.callback_query(F.data == 'look_definition_hint')
+async def look_definition_hint_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    definition = data['definition']
+    penalty = 5
+    await state.update_data(penalty=penalty)
+    hint_length = len(definition.description.split()) // 3
+    hint = definition.description.split()[:hint_length]
+    hint = ' '.join(hint)
+    await callback_query.message.answer(
+        text=f'Подсказка: <b>{hint}</b>',
         parse_mode='HTML',
     )

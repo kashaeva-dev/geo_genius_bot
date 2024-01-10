@@ -46,10 +46,11 @@ user_main_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 
 user_settings_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text=emoji.emojize(':pencil: Изменить имя'), callback_data='change_name')
+        InlineKeyboardButton(text=emoji.emojize(':pencil: Изменить имя'), callback_data='change_name'),
+        InlineKeyboardButton(text=emoji.emojize(':check_mark_button: Вкл./Выкл. мат. определение'), callback_data='change_description_math_usage')
     ],
     [
-        InlineKeyboardButton(text=emoji.emojize(':pencil: Вкл./Выкл. мат. определение'), callback_data='change_description_math_usage')
+        InlineKeyboardButton(text='На главную', callback_data='to_main_menu'),
     ],
 ]
 )
@@ -57,7 +58,12 @@ user_settings_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 user_hint_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(text=emoji.emojize(':bomb: Мат. определение'), callback_data='look_definition_math'),
-        InlineKeyboardButton(text=emoji.emojize(':key: Подсказка'), callback_data='look_definition_hint'),
+        InlineKeyboardButton(text=emoji.emojize(':key: 30%'), callback_data='look_definition_hint'),
+
+    ],
+    [
+        InlineKeyboardButton(text=emoji.emojize('::one:: Начало'), callback_data='look_definition_beginning'),
+        InlineKeyboardButton(text=emoji.emojize(':outbox_tray: Использует'), callback_data='look_definition_words'),
     ],
 ]
 
@@ -65,10 +71,10 @@ user_hint_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 
 user_description_math_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text=emoji.emojize(':pencil: Включить'), callback_data='change_name')
+        InlineKeyboardButton(text=emoji.emojize('🟢 Включить'), callback_data='description_math_on')
     ],
     [
-        InlineKeyboardButton(text=emoji.emojize(':pencil: Выключить'), callback_data='change_description_math_usage')
+        InlineKeyboardButton(text=emoji.emojize('⚪ Выключить'), callback_data='description_math_off')
     ],
 ]
 )
@@ -138,6 +144,9 @@ async def get_answer_choice_definitions_keyboard(definition_id):
 
 learn_next_definition_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text='Дальше', callback_data='learn_definitions'),
+        InlineKeyboardButton(text=emoji.emojize('Дальше :play_button:'), callback_data='learn_definitions'),
+    ],
+    [
+        InlineKeyboardButton(text=emoji.emojize(':warning: Ошибка'), callback_data='error_report'),
     ],
 ])
