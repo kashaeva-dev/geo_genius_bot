@@ -46,10 +46,11 @@ user_main_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 
 user_settings_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text=emoji.emojize(':pencil: Изменить имя'), callback_data='change_name')
+        InlineKeyboardButton(text=emoji.emojize(':pencil: Изменить имя'), callback_data='change_name'),
+        InlineKeyboardButton(text=emoji.emojize(':check_mark_button: Вкл./Выкл. мат. определение'), callback_data='change_description_math_usage')
     ],
     [
-        InlineKeyboardButton(text=emoji.emojize(':pencil: Вкл./Выкл. мат. определение'), callback_data='change_description_math_usage')
+        InlineKeyboardButton(text='На главную', callback_data='to_main_menu'),
     ],
 ]
 )
@@ -65,10 +66,10 @@ user_hint_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 
 user_description_math_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text=emoji.emojize(':pencil: Включить'), callback_data='change_name')
+        InlineKeyboardButton(text=emoji.emojize('🟢 Включить'), callback_data='description_math_on')
     ],
     [
-        InlineKeyboardButton(text=emoji.emojize(':pencil: Выключить'), callback_data='change_description_math_usage')
+        InlineKeyboardButton(text=emoji.emojize('⚪ Выключить'), callback_data='description_math_off')
     ],
 ]
 )

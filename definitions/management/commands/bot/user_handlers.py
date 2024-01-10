@@ -21,7 +21,7 @@ from definitions.management.commands.bot.user_keyboards import (
     get_initial_definitions_keyboard,
     get_used_definitions_keyboard,
     get_used_in_definitions_keyboard, get_answer_choice_definitions_keyboard, learn_next_definition_keyboard,
-    to_main_menu_keyboard, user_settings_keyboard, user_hint_keyboard,
+    to_main_menu_keyboard, user_settings_keyboard, user_hint_keyboard, user_description_math_keyboard,
 )
 from definitions.models import Client, Definition, DefinitionLearningProcess, LearnedDefinition
 
@@ -115,10 +115,11 @@ async def look_definitions_handler(callback_query: CallbackQuery):
         )
 
 @router.callback_query(F.data.startswith('definition_'))
-async def definition_handler(callback_query: CallbackQuery):
+async def definition_handler(callback_query: CallbackQuery, state: FSMContext):
     definition_id = callback_query.data.split('_')[-1]
     definition = await sync_to_async(Definition.objects.get)(pk=definition_id)
-    description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
+    data = await state.get_data()
+    description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math) + '\n'
     await callback_query.message.answer(
         f'<b>{definition.name.upper()}</b>\n\n{definition.description}\n\n'
         f'{description_math}\n\nопределение использует ⤵',
@@ -149,11 +150,16 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
             definitions_to_learn_ids.append(definition.id)
         definition_id = random.choice(definitions_to_learn_ids)
         definition = await Definition.objects.aget(pk=definition_id)
-        description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
+        client = data['client']
+        if client.description_math_is_on:
+            description_math = await async_re_sub(r'\$(\d+)\$', replace_with_emoji, definition.description_math)
+        else:
+            description_math = ''
         await state.update_data(definition=definition)
         await callback_query.message.edit_text(
             'Выбери определение, которое означает:\n\n'
-            f'{definition.description}\n\n',
+            f'{definition.description}\n\n'
+            f'{description_math}',
             reply_markup=await get_answer_choice_definitions_keyboard(definition.id),
             parse_mode='HTML',
         )
@@ -390,9 +396,30 @@ async def look_definition_math_handler(callback_query: CallbackQuery, state: FSM
     )
 
 @router.callback_query(F.data == 'change_description_math_usage')
-async def change_description_math_usage_handler(callback_query: CallbackQuery):
+async def description_math_menu_handler(callback_query: CallbackQuery):
     await callback_query.message.edit_text(
         text='Здесь можно включить или выключить отображение математических определений в процессе изучения',
         reply_markup=user_description_math_keyboard,
         parse_mode='HTML',
     )
+
+@router.callback_query(F.data.startswith('description_math_'))
+async def description_math_handler(callback_query: CallbackQuery):
+    condition = callback_query.data.split('_')[-1]
+    client = await Client.objects.aget(chat_id=callback_query.from_user.id)
+    if condition == 'on':
+        client.description_math_is_on = True
+        await client.asave()
+        await callback_query.message.edit_text(
+            text='Математические определения включены',
+            reply_markup=user_main_keyboard,
+            parse_mode='HTML',
+        )
+    else:
+        client.description_math_is_on = False
+        await client.asave()
+        await callback_query.message.edit_text(
+            text='Математические определения выключены',
+            reply_markup=user_main_keyboard,
+            parse_mode='HTML',
+        )
