@@ -58,8 +58,12 @@ user_settings_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 user_hint_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(text=emoji.emojize(':bomb: Мат. определение'), callback_data='look_definition_math'),
-        InlineKeyboardButton(text=emoji.emojize(':key: Подсказка'), callback_data='look_definition_hint'),
-        InlineKeyboardButton(text=emoji.emojize(':one: Начало'), callback_data='look_definition_beginning'),
+        InlineKeyboardButton(text=emoji.emojize(':key: 30%'), callback_data='look_definition_hint'),
+
+    ],
+    [
+        InlineKeyboardButton(text=emoji.emojize('::one:: Начало'), callback_data='look_definition_beginning'),
+        InlineKeyboardButton(text=emoji.emojize(':outbox_tray: Использует'), callback_data='look_definition_words'),
     ],
 ]
 

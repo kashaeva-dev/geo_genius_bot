@@ -233,6 +233,7 @@ async def definition_handler(message: Message, state: FSMContext):
     right_answer = [word.strip(',.-()<b>/') for word in right_answer]
     right_word_count = 0
     client = data['client']
+    penalty = data['penalty']
     if user_answer[0] == 'это':
         user_answer = user_answer[1:]
     for word in user_answer:
@@ -245,7 +246,8 @@ async def definition_handler(message: Message, state: FSMContext):
             client=client,
             definition=definition,
             action='typing',
-            score=30,
+            grade = 'excellent',
+            score=30 / penalty,
         )
         actions = await sync_to_async(DefinitionLearningProcess.objects.filter)(client=client, definition=definition)
         total_score = 0
@@ -265,7 +267,8 @@ async def definition_handler(message: Message, state: FSMContext):
             client=client,
             definition=definition,
             action='typing',
-            score=10,
+            grade='good',
+            score=10 / penalty,
         )
         mark_text = '👍 Почти получилось! Надо чуть-чуть подкорректировать!'
     elif mark >= 0.5:
@@ -273,7 +276,8 @@ async def definition_handler(message: Message, state: FSMContext):
             client=client,
             definition=definition,
             action='typing',
-            score=5,
+            grade='satisfactory',
+            score=5 / penalty,
         )
         mark_text = '🥉 Неплохо! Пожалуйста, обрати внимание на формулировку!'
     else:
@@ -281,6 +285,7 @@ async def definition_handler(message: Message, state: FSMContext):
             client=client,
             definition=definition,
             action='typing',
+            grade='bad',
             score=0,
         )
         mark_text = '☹  Попробуй еще раз! Все получится!'
@@ -318,19 +323,19 @@ async def look_statistics_handler(callback_query: CallbackQuery):
     excellent_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
         client=client,
         action='typing',
-        score=4,
+        grade='excellent',
         date__date=today,
     ).count)()
     good_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
         client=client,
         action='typing',
-        score=10,
+        grade='good',
         date__date=today,
     ).count)()
     bad_typings = await sync_to_async(DefinitionLearningProcess.objects.filter(
         client=client,
         action='typing',
-        score=5,
+        grade='bad',
         date__date=today,
     ).count)()
     client_with_today_score = await sync_to_async(DefinitionLearningProcess.objects.filter(
@@ -477,3 +482,31 @@ async def report_handler(message: Message, state: FSMContext):
         )
 
     await state.clear()
+
+
+@router.callback_query(F.data == 'look_definition_words')
+async def look_definition_words_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    definition = data['definition']
+    used_definitions = await sync_to_async(definition.used_definitions.all)()
+    text = 'Данное определение основано на определениях:\n'
+    async for used_definition in used_definitions:
+        text += f'{used_definition.name}\n'
+    await callback_query.message.answer(
+        text=text,
+        parse_mode='HTML',
+    )
+
+@router.callback_query(F.data == 'look_definition_hint')
+async def look_definition_hint_handler(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    definition = data['definition']
+    penalty = 5
+    await state.update_data(penalty=penalty)
+    hint_length = len(definition.description.split()) // 3
+    hint = definition.description.split()[:hint_length]
+    hint = ' '.join(hint)
+    await callback_query.message.answer(
+        text=f'Подсказка: <b>{hint}</b>',
+        parse_mode='HTML',
+    )
