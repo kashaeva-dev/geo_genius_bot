@@ -19,7 +19,7 @@ class SimilarDefinitionInline(admin.TabularInline):
 
 @admin.register(Definition)
 class DefinitionAdmin(ImportExportModelAdmin):
-    list_display = ('id', 'name', 'description', 'is_initial', 'emoji', 'used_definitions_list')
+    list_display = ('id', 'name', 'category', 'description', 'is_initial', 'emoji', 'used_definitions_list')
     list_display_links = ('id', 'name')
     search_fields = ('name',)
     inlines = (DefinitionInline, SimilarDefinitionInline,)

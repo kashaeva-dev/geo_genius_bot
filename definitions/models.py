@@ -15,7 +15,13 @@ class Client(models.Model):
         return f'{self.firstname} {self.lastname} {self.chat_id}'
     
 class Definition(models.Model):
+    CATEGORIES = (
+        ('definition', 'определение'),
+        ('axiom', 'аксиома'),
+        ('theorem', 'теорема'),
+    )
     name = models.CharField(max_length=100, verbose_name='Определение')
+    category = models.CharField(max_length=100, verbose_name='Категория', choices=CATEGORIES, default='definition')
     description = models.TextField(verbose_name='Формулировка')
     description_math = models.TextField(verbose_name='Формулировка математическая', blank=True)
     proof = models.TextField(verbose_name='Доказательство', blank=True, default='')
