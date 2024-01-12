@@ -15,6 +15,7 @@ from aiogram.filters import Command
 from aiogram.fsm.state import StatesGroup, State
 
 from definitions.management.commands.bot.emoji import replace_with_emoji, async_re_sub
+from definitions.management.commands.bot.pymorphy_func import get_accs_forms
 from definitions.management.commands.bot.user_keyboards import (
     user_register_keyboard,
     user_main_keyboard,
@@ -160,8 +161,11 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
         else:
             description_math = ''
         await state.update_data(definition=definition)
+        logger.info(f'definition category: {definition.get_category_display()}')
+        category = definition.get_category_display()
+        category, kotorii = get_accs_forms(category, 'который')
         await callback_query.message.edit_text(
-            'Выбери определение, которое означает:\n\n'
+            f'Выбери <b>{category}</b>, {kotorii} соответствует:\n\n'
             f'{definition.description}\n\n'
             f'{description_math}',
             reply_markup=await get_answer_choice_definitions_keyboard(definition.id),
@@ -170,10 +174,14 @@ async def learn_definitions_handler(callback_query: CallbackQuery, state: FSMCon
     else:
         definition_id = random.choice(data['show_definition_ids'])
         definition = await Definition.objects.aget(pk=definition_id)
+        logger.info(f'definition category: {definition.get_category_display()}')
+        category = definition.get_category_display()
+        category, kotorii = get_accs_forms(category, 'который')
         await state.update_data(definition=definition)
         await state.set_state(Learning.waiting_for_definition)
         await callback_query.message.edit_text(
-            'А теперь, пожалуйста, напишите определение, которое означает:\n\n'
+            f'А теперь, пожалуйста, напишите {category}, '
+            f' {kotorii} соответствует:\n\n'
             f'{definition.name.upper()}',
             reply_markup=user_hint_keyboard,
             parse_mode='HTML',
