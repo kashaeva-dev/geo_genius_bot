@@ -197,7 +197,7 @@ async def answer_choice_handler(callback_query: CallbackQuery, state: FSMContext
     show_definition_ids = data.get('show_definition_ids', False)
     if not show_definition_ids:
         show_definition_ids = []
-    show_definition_ids.append(definition_id)
+    show_definition_ids.append(data['definition'].id)
     await state.update_data(counter=counter + 1)
     await state.update_data(show_definition_ids=show_definition_ids)
     definition = await Definition.objects.aget(pk=definition_id)
