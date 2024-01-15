@@ -357,7 +357,7 @@ async def look_statistics_handler(callback_query: CallbackQuery):
         'client'
     ).annotate(
         total_score=Coalesce(Sum('score'), 0, output_field=FloatField())
-    ).order_by)('total_score')
+    ).order_by)('-total_score')
 
     scores_text = 'РЕЙТИНГ 3 ЛУЧШИХ УЧАСТНИКОВ:\n'
     counter = 0
